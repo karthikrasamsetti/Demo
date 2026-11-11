@@ -1,0 +1,15 @@
+{
+  "framework": "demo-1",
+  "generator": "PerfAgent",
+  "tool": "k6",
+  "k6_version": "v1.3.0",
+  "updated_at": "2026-11-11T05:57:55+00:00",
+  "tests": {
+    "login-products": {
+      "plan_id": "1340c18f3c054e97b697c66027e8db48",
+      "script_id": "7f53edcdc74c498ab5087135a487f51f",
+      "exported_at": "2026-11-11T05:57:55+00:00",
+      "target_base_url": "http://127.0.0.1:8000"
+    }
+  }
+}

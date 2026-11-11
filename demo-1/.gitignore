@@ -1,0 +1,6 @@
+# k6 run output
+results/*
+!results/.gitkeep
+# local secrets
+*.local.env
+.env

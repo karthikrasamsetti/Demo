@@ -1,0 +1,71 @@
+// Managed by PerfAgent - regenerated on every export of the 'demo-1' framework.
+// In your Jenkins job set "Script Path" to: demo-1/ci/Jenkinsfile
+// Works on Linux/macOS agents (sh) and Windows agents (PowerShell).
+// Create a "Secret text" credential for each secret below (ID = variable name).
+pipeline {
+  agent any
+  parameters {
+    string(name: 'TEST', defaultValue: 'all', description: "Test folder under demo-1/tests, or 'all'")
+    string(name: 'PERF_ENV', defaultValue: 'dev', description: 'Environment file under demo-1/environments')
+  }
+  options { timeout(time: 2, unit: 'HOURS') }
+  stages {
+    stage('Install k6') {
+      steps {
+        script {
+          if (isUnix()) {
+            sh '''
+            if [ -x "$WORKSPACE/.bin/k6-v1.3.0/k6" ]; then "$WORKSPACE/.bin/k6-v1.3.0/k6" version; exit 0; fi
+            TMP="$WORKSPACE/.k6tmp"
+            rm -rf "$TMP" && mkdir -p "$TMP" "$WORKSPACE/.bin/k6-v1.3.0"
+            curl -fsSL -o "$TMP/k6.tgz" https://github.com/grafana/k6/releases/download/v1.3.0/k6-v1.3.0-linux-amd64.tar.gz
+            echo "84d26fc1f7bc03e02f2e016b3b1b20c032e05dfe461fca82de4e3a6ebe72ddbd  $TMP/k6.tgz" | sha256sum -c -
+            tar -xzf "$TMP/k6.tgz" -C "$TMP"
+            mv "$TMP/k6-v1.3.0-linux-amd64/k6" "$WORKSPACE/.bin/k6-v1.3.0/k6"
+            rm -rf "$TMP"
+            "$WORKSPACE/.bin/k6-v1.3.0/k6" version
+'''
+          } else {
+            powershell '''
+            $ErrorActionPreference = 'Stop'
+            $ProgressPreference = 'SilentlyContinue'
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            $bin = Join-Path $env:WORKSPACE '.bin/k6-v1.3.0'
+            $exe = Join-Path $bin 'k6.exe'
+            if (Test-Path $exe) { & $exe version; exit 0 }
+            $tmp = Join-Path $env:WORKSPACE '.k6tmp'
+            if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+            New-Item -ItemType Directory -Force -Path $tmp, $bin | Out-Null
+            $zip = Join-Path $tmp 'k6.zip'
+            Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/grafana/k6/releases/download/v1.3.0/k6-v1.3.0-windows-amd64.zip' -OutFile $zip
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
+            if ($hash -ne '06a15d69869efb9261e6c132af64078731ad7d048095eaca05198daacb17686d') { throw "k6 download failed its checksum check ($hash)" }
+            Expand-Archive -Path $zip -DestinationPath $tmp -Force
+            Copy-Item -Force (Join-Path $tmp 'k6-v1.3.0-windows-amd64/k6.exe') $exe
+            Remove-Item -Recurse -Force $tmp
+            & $exe version
+'''
+          }
+        }
+      }
+    }
+    stage('Performance tests') {
+      steps {
+        dir('demo-1') {
+          script {
+            if (isUnix()) {
+              sh 'PATH="$WORKSPACE/.bin/k6-v1.3.0:$PATH" sh scripts/run-tests.sh "$TEST" "$PERF_ENV"'
+            } else {
+              powershell '$env:PATH = (Join-Path $env:WORKSPACE ".bin/k6-v1.3.0") + ";" + $env:PATH; & ./scripts/run-tests.ps1 -Test $env:TEST -Environment $env:PERF_ENV; exit $LASTEXITCODE'
+            }
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'demo-1/results/*.json', allowEmptyArchive: true
+    }
+  }
+}

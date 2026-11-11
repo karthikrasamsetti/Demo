@@ -1,0 +1,96 @@
+{
+  "target_base_url": "http://127.0.0.1:8000",
+  "scenarios": [
+    {
+      "name": "Browse Products",
+      "weight": 0.7,
+      "steps": [
+        {
+          "name": "View Products",
+          "method": "GET",
+          "path": "/products",
+          "body": null,
+          "extract": [],
+          "assertions": [],
+          "graphql_query": ""
+        }
+      ],
+      "think_time": {
+        "min_seconds": 2.0,
+        "max_seconds": 4.0
+      }
+    },
+    {
+      "name": "Login and Browse Products",
+      "weight": 0.3,
+      "steps": [
+        {
+          "name": "Login",
+          "method": "POST",
+          "path": "/login",
+          "body": {
+            "user": "demo",
+            "password": "x"
+          },
+          "extract": [
+            {
+              "var": "token",
+              "source": "json",
+              "path": "token"
+            }
+          ],
+          "assertions": [],
+          "graphql_query": ""
+        },
+        {
+          "name": "View Products after Login",
+          "method": "GET",
+          "path": "/products",
+          "body": null,
+          "extract": [],
+          "assertions": [],
+          "graphql_query": ""
+        }
+      ],
+      "think_time": {
+        "min_seconds": 3.0,
+        "max_seconds": 5.0
+      }
+    }
+  ],
+  "load_profile": {
+    "type": "ramp",
+    "stages": [
+      {
+        "duration_seconds": 3,
+        "target_users": 3
+      },
+      {
+        "duration_seconds": 9,
+        "target_users": 3
+      },
+      {
+        "duration_seconds": 3,
+        "target_users": 0
+      }
+    ]
+  },
+  "thresholds": [
+    {
+      "metric": "error_rate",
+      "op": "<",
+      "value": 0.05
+    },
+    {
+      "metric": "p95_ms",
+      "op": "<=",
+      "value": 500.0
+    }
+  ],
+  "data_file": null,
+  "headers": {
+    "Authorization": "Bearer ${token}"
+  },
+  "environment": "",
+  "insecure_tls": false
+}
